@@ -26,7 +26,7 @@ class EdgeCookieReader
         return Encoding.UTF8.GetString(plaintext);
     }
 
-    public List<CookieItem> GetEdgeCookies()
+    public CookieItem GetEdgeCookie(string HostName, string Name)
     {
         var userprofilePath = Environment.GetEnvironmentVariable("USERPROFILE");
         var cookieFile = $@"{userprofilePath}\AppData\Local\Microsoft\Edge\User Data\Default\Cookies";
@@ -44,7 +44,7 @@ class EdgeCookieReader
         var connection = new SQLiteConnection($@"DataSource={tempCookieFile}");
 
         connection.Open();
-        var command = new SQLiteCommand("select host_key,name,encrypted_value from cookies", connection);
+        var command = new SQLiteCommand($"select host_key,name,encrypted_value from cookies where host_key is '{HostName}'", connection);
         var dataReader = command.ExecuteReader();
 
         while (dataReader.Read())
@@ -66,6 +66,6 @@ class EdgeCookieReader
 
         connection.Close();
 
-        return cookies;
+        return cookies.Find(x => x.Name == Name);
     }
 }
