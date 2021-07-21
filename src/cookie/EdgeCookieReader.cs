@@ -9,6 +9,7 @@ using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Parameters;
 using System.Security.Cryptography;
 using System.Collections.Generic;
+using System.Net;
 
 class EdgeCookieReader
 {
@@ -26,7 +27,7 @@ class EdgeCookieReader
         return Encoding.UTF8.GetString(plaintext);
     }
 
-    public CookieItem GetEdgeCookie(string HostName, string Name)
+    public CookieCollection GetEdgeCookie(string HostName)
     {
         var userprofilePath = Environment.GetEnvironmentVariable("USERPROFILE");
         var cookieFile = $@"{userprofilePath}\AppData\Local\Microsoft\Edge\User Data\Default\Cookies";
@@ -39,7 +40,7 @@ class EdgeCookieReader
         File.Delete(tempCookieFile);
         File.Copy(cookieFile, tempCookieFile);
 
-        var cookies = new List<CookieItem>();
+        var cookies = new CookieCollection();
 
         var connection = new SQLiteConnection($@"DataSource={tempCookieFile}");
 
@@ -61,11 +62,15 @@ class EdgeCookieReader
             encryptedValue = encryptedValue.Skip(kEncryptionVersionPrefix.Length + nonceLength).Take(encryptedValue.Length - (kEncryptionVersionPrefix.Length + nonceLength)).ToArray();
 
             var str = AesGcmDecrypt(keyBytes, nonce, encryptedValue);
-            cookies.Add(new CookieItem { HostKey = dataReader["host_key"].ToString(), Name = dataReader["name"].ToString(), Value = str });
+            cookies.Add(new Cookie { Name = dataReader["name"].ToString(), Value = str, Domain = dataReader["host_key"].ToString() });
         }
 
         connection.Close();
 
-        return cookies.Find(x => x.Name == Name);
+        if(cookies.Count() == 0){
+            throw new Exception("No cookies");
+        }
+
+        return cookies;
     }
 }
